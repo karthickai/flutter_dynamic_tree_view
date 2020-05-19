@@ -1,5 +1,6 @@
 import 'dart:collection';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter_treeview/tree_view.dart';
@@ -10,19 +11,28 @@ import 'package:flushbar/flushbar.dart';
 import 'package:flushbar/flushbar_route.dart' as route;
 import 'setttings.dart';
 
-bool status = false;
+bool status = true; // need to change to false
 const users = const {
   'admin@test.com': '12345',
   'supervisor@test.com': '12345',
   'operator@test.com': '12345'
 };
-String currentUser;
-bool onBoard =false;
+String currentUser = "admin"; // need to delete admin
+bool onBoard = false;
 
 List<String> breadcrumbs = [
   'Home',
 ];
 int currentIndex = 0;
+String time1 = "Current Shift : 19-May-20 (Tue) 07:00 - 19-May-20 (Tue) 19:00";
+String time2 =
+    "Current Shift : 19-May-2020 (Tue) 19:00 - 20-May-2020 (Wed) 07:00";
+String time3 =
+    "Current Shift : 20-May-2020 (Wed) 07:00 AM - 20-May-2020 (Wed) 01:00 PM";
+String time4 =
+    "Current Shift : Wed, May-20-2020 13:00 - Wed, May-20-2020 19:00 | Local Time: Wed, May-20-2020 15:31";
+
+String selectedTime = time1;
 
 void main() => runApp(MyApp());
 
@@ -60,41 +70,40 @@ class LoginScreen extends StatelessWidget {
   Duration get loginTime => Duration(milliseconds: 2250);
 
   Future<String> _authUser(LoginData data) {
+    print(data.name);
+    String name = data.name.trim();
+    String password = data.password.trim();
+    print(name);
     return Future.delayed(loginTime).then((_) {
-      if (!users.containsKey(data.name)) {
+      if (!users.containsKey(name)) {
         return 'Username not exists';
       }
-      if (users[data.name] != data.password) {
+      if (users[name] != password) {
         return 'Password does not match';
       }
-      currentUser = data.name;
+      currentUser = name;
       status = true;
       return null;
     });
   }
 
-  Future<String> _recoverPassword(String name) {
-    return Future.delayed(loginTime).then((_) {
-      if (!users.containsKey(name)) {
-        return 'Username not exists';
-      }
-      return null;
-    });
-  }
+
 
   @override
   Widget build(BuildContext context) {
     return FlutterLogin(
       title: 'CNOTES',
       titleTag: 'CSoft Technologies',
+      messages: LoginMessages(
+        signupButton: '',
+        forgotPasswordButton: '',
+      ),
       onLogin: _authUser,
-      onSignup: _authUser,
       onSubmitAnimationCompleted: () {
         Navigator.of(context).pushReplacement(MaterialPageRoute(
           builder: (context) => HomePage(),
         ));
       },
-      onRecoverPassword: _recoverPassword,
     );
   }
 }
@@ -110,13 +119,20 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
-        title: Text('Downstream & Chemicals', style: TextStyle(
-          fontSize: 18,
-        ),),
+        title: Text(
+          'Downstream & Chemicals',
+          style: TextStyle(
+            fontSize: 18,
+          ),
+        ),
         actions: [
           IconButton(
             icon: Icon(Icons.exit_to_app),
             onPressed: () {
+              breadcrumbs = [
+                'Home',
+              ];
+              currentIndex = 0;
               Navigator.push(context,
                   MaterialPageRoute(builder: (BuildContext context) {
                 return LoginScreen();
@@ -129,8 +145,8 @@ class _HomePageState extends State<HomePage> {
             onPressed: () {
               Navigator.push(context,
                   MaterialPageRoute(builder: (BuildContext context) {
-                    return SettingPage();
-                  }));
+                return SettingPage();
+              }));
             },
           ),
         ],
@@ -164,6 +180,12 @@ class _HomePageState extends State<HomePage> {
               TreeViewWidget(refresh: () {
                 setState(() {});
               }),
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Text("Logged in as $currentUser", style: TextStyle(
+                  fontWeight: FontWeight.bold
+                ),),
+              ),
             ],
           ),
         ),
@@ -194,7 +216,7 @@ class _BodyPageState extends State<BodyPage> {
 
   @override
   Widget build(BuildContext context) {
-    if(!onBoard){
+    if (!onBoard) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         showFlushbar(flushbar, context);
       });
@@ -208,6 +230,7 @@ class _BodyPageState extends State<BodyPage> {
           BreadCrumbCustom(refresh: () {
             setState(() {});
           }),
+          TimerCard(),
           PageContent(),
         ],
       ),
@@ -223,8 +246,6 @@ class _BodyPageState extends State<BodyPage> {
     return Navigator.of(context, rootNavigator: true).push(_route);
   }
 }
-
-
 
 class TreeViewWidget extends StatefulWidget {
   const TreeViewWidget({this.refresh});
@@ -327,6 +348,23 @@ class _TreeViewWidgetState extends State<TreeViewWidget> {
                     _expandNode(key, expanded),
                 onNodeTap: (key) {
                   setState(() {
+                    switch (key) {
+                      case "Shift Supervisor":
+                        selectedTime = time1;
+                        break;
+                      case "Utilities":
+                        selectedTime = time2;
+                        break;
+                      case "Senior Operator":
+                        selectedTime = time3;
+                        break;
+                      case "Console Operator":
+                        selectedTime = time4;
+                        break;
+                      default:
+                        selectedTime = time1;
+                        break;
+                    }
                     breadcrumbs.add(key);
                     breadcrumbs =
                         LinkedHashSet<String>.from(breadcrumbs).toList();
@@ -357,6 +395,47 @@ class _TreeViewWidgetState extends State<TreeViewWidget> {
   }
 }
 
+class TimerCard extends StatefulWidget {
+  @override
+  _TimerCardState createState() => _TimerCardState();
+}
+
+class _TimerCardState extends State<TimerCard> {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+      width: double.infinity,
+      decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(4),
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+                offset: Offset(0, 1), blurRadius: 3, color: Colors.black26)
+          ]),
+      padding: EdgeInsets.all(8),
+      child: Padding(
+        padding: EdgeInsets.all(0),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Text(
+            selectedTime,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+enum ExpanderTypeLan {
+  EN,
+  KZ,
+  RU,
+}
+
 class BreadCrumbCustom extends StatefulWidget {
   const BreadCrumbCustom({this.refresh});
 
@@ -373,64 +452,106 @@ class _BreadCrumbCustomState extends State<BreadCrumbCustom> {
   bool _lastDivider = false;
   final _scrollController = ScrollController();
 
+  final Map<ExpanderTypeLan, Widget> expansionTypeOptions = const {
+    ExpanderTypeLan.EN: Text("EN"),
+    ExpanderTypeLan.KZ: Text("KZ"),
+    ExpanderTypeLan.RU: Text("RU"),
+  };
+  ExpanderTypeLan _expanderType = ExpanderTypeLan.EN;
+
   @override
   void initState() {
-    // TODO: implement initState
-    breadCrumbItem = <BreadCrumbItem>[
-      BreadCrumbItem(content: Text('Item1')),
-      BreadCrumbItem(content: Text('Item2')),
-    ];
     super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Container(
-        margin: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-        width: double.infinity,
-        decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(4),
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                  offset: Offset(0, 1), blurRadius: 3, color: Colors.black26)
-            ]),
-        padding: EdgeInsets.all(8),
-        child: BreadCrumb.builder(
-          itemCount: breadcrumbs.length,
-          builder: (index) => BreadCrumbItem(
-            content: Text(
-              breadcrumbs[index],
-              style: TextStyle(
-                fontWeight:
-                    currentIndex == index ? FontWeight.bold : FontWeight.normal,
-                fontSize: 14,
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            flex: 3,
+            child: Container(
+              margin: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+              width: double.infinity,
+              decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(4),
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                        offset: Offset(0, 1),
+                        blurRadius: 3,
+                        color: Colors.black26)
+                  ]),
+              padding: EdgeInsets.all(8),
+              child: BreadCrumb.builder(
+                itemCount: breadcrumbs.length,
+                builder: (index) => BreadCrumbItem(
+                  content: Text(
+                    breadcrumbs[index],
+                    style: TextStyle(
+                      fontWeight: currentIndex == index
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                      fontSize: 14,
+                    ),
+                  ),
+                  borderRadius: BorderRadius.circular(4),
+                  padding: EdgeInsets.all(4),
+                  splashColor: Colors.indigo,
+                  onTap: () {
+                    setState(() {
+                      currentIndex = index;
+                      String key = breadcrumbs[currentIndex];
+                      switch (key) {
+                        case "Shift Supervisor":
+                          selectedTime = time1;
+                          break;
+                        case "Utilities":
+                          selectedTime = time2;
+                          break;
+                        case "Senior Operator":
+                          selectedTime = time3;
+                          break;
+                        case "Console Operator":
+                          selectedTime = time4;
+                          break;
+                        default:
+                          selectedTime = time1;
+                          break;
+                      }
+                      widget.refresh();
+                    });
+                  },
+                  textColor: Colors.cyan,
+                  disabledTextColor: Colors.grey,
+                ),
+                divider: Icon(
+                  Icons.chevron_right,
+                  color: Colors.green,
+                ),
+                overflow: ScrollableOverflow(
+                  direction: _isHorizontal ? Axis.horizontal : Axis.vertical,
+                  reverse: _reverse,
+                  keepLastDivider: _lastDivider,
+                  controller: _scrollController,
+                ),
               ),
             ),
-            borderRadius: BorderRadius.circular(4),
-            padding: EdgeInsets.all(4),
-            splashColor: Colors.indigo,
-            onTap: () {
-              setState(() {
-                currentIndex = index;
-                widget.refresh();
-              });
-            },
-            textColor: Colors.cyan,
-            disabledTextColor: Colors.grey,
           ),
-          divider: Icon(
-            Icons.chevron_right,
-            color: Colors.green,
-          ),
-          overflow: ScrollableOverflow(
-            direction: _isHorizontal ? Axis.horizontal : Axis.vertical,
-            reverse: _reverse,
-            keepLastDivider: _lastDivider,
-            controller: _scrollController,
-          ),
-        ),
+          Expanded(
+            flex: 1,
+            child: Container(
+              margin: EdgeInsets.symmetric(horizontal: 0, vertical: 16),
+              width: double.infinity,
+              child: CupertinoSlidingSegmentedControl(
+                children: expansionTypeOptions,
+                groupValue: _expanderType,
+                onValueChanged: (ExpanderTypeLan newValue) {},
+              ),
+            ),
+          )
+        ],
       ),
     );
   }
@@ -452,7 +573,7 @@ class _PageContentState extends State<PageContent> {
         child: SingleChildScrollView(
           child: Container(
             width: double.infinity,
-            margin: EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+            margin: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(4),
                 color: Colors.white,
